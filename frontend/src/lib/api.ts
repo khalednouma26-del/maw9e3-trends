@@ -14,14 +14,14 @@ async function fetchJSON<T>(url: string, options?: RequestInit): Promise<T> {
   return res.json()
 }
 
-export const getTrends = () => fetchJSON<import('@/types').Trend[]>('/trends/')
+export const getTrends = () => fetchJSON<import('@/types').Trend[]>('/trends')
 export const refreshTrends = () => fetchJSON<{ message: string; total: number }>('/trends/refresh', { method: 'POST' })
 export const getArticles = (params?: { page?: number; category?: string; search?: string }) => {
   const q = new URLSearchParams()
   if (params?.page) q.set('page', String(params.page))
   if (params?.category) q.set('category', params.category)
   if (params?.search) q.set('search', params.search)
-  return fetchJSON<{ articles: import('@/types').Article[]; total: number; page: number }>(`/articles/?${q}`)
+  return fetchJSON<{ articles: import('@/types').Article[]; total: number; page: number }>(`/articles?${q}`)
 }
 export const getArticle = (id: number) => fetchJSON<import('@/types').Article>(`/articles/${id}`)
 export const runPipeline = () => fetchJSON<Record<string, unknown>>('/pipeline/run', { method: 'POST' })

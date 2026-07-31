@@ -58,7 +58,7 @@ async def lifespan(app: FastAPI):
 
 
 origins = [settings.site_url] if settings.site_url != "*" else ["*"]
-app = FastAPI(title="Maw9e3 Trends API", version="2.0.0", lifespan=lifespan)
+app = FastAPI(title="Maw9e3 Trends API", version="2.0.0", lifespan=lifespan, redirect_slashes=False)
 
 app.add_middleware(
     CORSMiddleware,

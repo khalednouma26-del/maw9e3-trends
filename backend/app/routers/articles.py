@@ -16,7 +16,7 @@ publisher = AutoPublisher()
 seo = SEOService()
 
 
-@router.get("/")
+@router.get("")
 async def list_articles(
     page: int = Query(1, ge=1),
     per_page: int = Query(20, ge=1, le=100),

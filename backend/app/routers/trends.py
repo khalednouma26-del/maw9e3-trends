@@ -10,7 +10,7 @@ router = APIRouter(prefix="/api/trends", tags=["trends"])
 discovery = TrendDiscoveryService()
 
 
-@router.get("/")
+@router.get("")
 async def list_trends(db: AsyncSession = Depends(get_db)):
     result = await db.execute(select(Trend).order_by(Trend.score.desc()).limit(100))
     trends = result.scalars().all()
