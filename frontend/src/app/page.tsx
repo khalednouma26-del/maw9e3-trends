@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { TrendingUp, Newspaper, ArrowRight, Clock, Eye, Globe, Activity, Heart, DollarSign, Film, Microscope, Cpu, Landmark } from 'lucide-react'
 import { useSearchParams } from 'next/navigation'
-import { getTrends, getArticles } from '@/lib/api'
+import { getTrends, getArticles, trackPageView } from '@/lib/api'
 import type { Trend, Article } from '@/types'
 import { formatDate } from '@/lib/utils'
 
@@ -27,19 +27,9 @@ export default function HomePage() {
   const [loading, setLoading] = useState(true)
   const [activeCat, setActiveCat] = useState('')
 
-  const isAdmin = typeof window !== 'undefined' && !!localStorage.getItem('token')
-
-  const fakeViews = (arts: Article[]) => {
-    const seed = Date.now()
-    return arts.map((a, i) => ({
-      ...a,
-      view_count: isAdmin ? a.view_count : (a.view_count || 0) * 50 + ((seed + i * 7) % 500) + 200,
-    }))
-  }
-
   const loadArticles = (cat: string) => {
     setActiveCat(cat)
-    getArticles(cat ? { category: cat } : undefined).then(r => setArticles(fakeViews(r.articles.slice(0, 6)))).catch(() => {})
+    getArticles(cat ? { category: cat } : undefined).then(r => setArticles(r.articles.slice(0, 6))).catch(() => {})
   }
 
   useEffect(() => {
@@ -50,7 +40,8 @@ export default function HomePage() {
       const srcs = new Set(t.map(tr => tr.source).filter(Boolean))
       setTotalStats({ trends: t.length, articles: a.total, categories: cats.size, sources: srcs.size })
       setTrends(t.slice(0, 8))
-      setArticles(fakeViews(a.articles.slice(0, 6)))
+      setArticles(a.articles.slice(0, 6))
+      trackPageView()
     }).finally(() => setLoading(false))
   }, [searchParams])
 

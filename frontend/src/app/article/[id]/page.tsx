@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react'
 import { useParams } from 'next/navigation'
 import Link from 'next/link'
 import { ArrowLeft, TrendingUp, Clock, Eye, Share2, Facebook, Twitter, Linkedin } from 'lucide-react'
-import { getArticle } from '@/lib/api'
+import { getArticle, trackPageView } from '@/lib/api'
 import { formatDate } from '@/lib/utils'
 import type { ArticleDetail } from '@/types'
 
@@ -13,17 +13,12 @@ export default function ArticlePage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(false)
 
-  const isAdmin = typeof window !== 'undefined' && !!localStorage.getItem('token')
-
   useEffect(() => {
     getArticle(Number(id)).then((a) => {
-      if (!isAdmin) {
-        const seed = Date.now()
-        a.view_count = (a.view_count || 0) * 50 + (seed % 500) + 200
-      }
       setArticle(a)
+      trackPageView(Number(id))
     }).catch(() => setError(true)).finally(() => setLoading(false))
-  }, [id, isAdmin])
+  }, [id])
 
   const shareUrl = typeof window !== 'undefined' ? window.location.href : ''
   const shareText = article?.title || ''

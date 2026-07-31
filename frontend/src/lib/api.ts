@@ -28,3 +28,7 @@ export const runPipeline = () => fetchJSON<Record<string, unknown>>('/pipeline/r
 export const submitContact = (data: { name: string; email: string; subject: string; message: string }) =>
   fetchJSON<{ message: string }>('/contact', { method: 'POST', body: JSON.stringify(data) })
 export const getDashboardStats = () => fetchJSON<import('@/types').DashboardStats>('/dashboard/stats')
+export const trackPageView = (articleId?: number) => {
+  const qs = `event_type=page_view${articleId ? `&article_id=${articleId}` : ''}`
+  fetch(`/api/dashboard/track?${qs}`, { method: 'POST' }).catch(() => {})
+}
