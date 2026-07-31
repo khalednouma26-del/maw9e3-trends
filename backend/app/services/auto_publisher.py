@@ -75,7 +75,7 @@ class AutoPublisher:
                 image_alt=article_data.get("image_alt"),
                 category_name=trend.category,
                 language=trend.language or "en",
-                published_at=datetime.now(timezone.utc),
+                published_at=datetime.utcnow(),
             )
             db.add(article)
             result["articles_generated"] += 1
@@ -87,7 +87,7 @@ class AutoPublisher:
     async def publish_drafts(self, db: AsyncSession) -> int:
         result = await db.execute(select(Article).where(Article.published == 0))
         drafts = result.scalars().all()
-        now = datetime.now(timezone.utc)
+        now = datetime.utcnow()
         for article in drafts:
             article.published = 1
             article.published_at = now

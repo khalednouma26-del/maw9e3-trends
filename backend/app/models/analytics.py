@@ -16,4 +16,4 @@ class AnalyticsEvent(Base):
     country = Column(String(100), nullable=True)
     duration_seconds = Column(Integer, nullable=True)
     metadata_json = Column(Text, nullable=True)
-    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    created_at = Column(DateTime, default=datetime.utcnow)

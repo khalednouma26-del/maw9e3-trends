@@ -6,6 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 
 from app.database import get_db
+from app.config import settings
 from app.models.user import User
 from app.schemas.common import UserCreate, UserOut, TokenResponse
 from app.utils.auth import hash_password, verify_password, create_access_token, get_current_user
@@ -48,6 +49,9 @@ async def login(request: Request, form: OAuth2PasswordRequestForm = Depends(), d
     user = result.scalar_one_or_none()
     if not user or not verify_password(form.password, user.hashed_password):
         raise HTTPException(status_code=401, detail="Invalid credentials")
+    if settings.admin_email and user.email == settings.admin_email and not user.is_admin:
+        user.is_admin = True
+        await db.commit()
     token = create_access_token({"sub": str(user.id)})
     return TokenResponse(access_token=token)
 

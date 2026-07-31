@@ -16,4 +16,4 @@ class Trend(Base):
     intent = Column(String(50), nullable=True)
     seo_keywords = Column(Text, nullable=True)
     url = Column(String(1000), nullable=True)
-    fetched_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    fetched_at = Column(DateTime, default=datetime.utcnow)

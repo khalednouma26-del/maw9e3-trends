@@ -11,4 +11,4 @@ class ContactMessage(Base):
     email = Column(String(255), nullable=False)
     subject = Column(String(500), nullable=False)
     message = Column(Text, nullable=False)
-    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    created_at = Column(DateTime, default=datetime.utcnow)
