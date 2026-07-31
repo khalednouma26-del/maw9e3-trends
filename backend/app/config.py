@@ -1,8 +1,8 @@
 import os
-from pydantic_settings import BaseSettings
-
-
 import secrets
+
+from pydantic import model_validator
+from pydantic_settings import BaseSettings
 
 
 class Settings(BaseSettings):
@@ -17,6 +17,13 @@ class Settings(BaseSettings):
     trends_refresh_interval_hours: int = 1
     content_gen_interval_hours: int = 2
     update_interval_hours: int = 24
+
+    @model_validator(mode="after")
+    def normalize_database_url(self):
+        if self.database_url.startswith(("postgresql://", "postgres://")) and "+asyncpg" not in self.database_url:
+            self.database_url = self.database_url.replace("postgresql://", "postgresql+asyncpg://", 1)
+            self.database_url = self.database_url.replace("postgres://", "postgresql+asyncpg://", 1)
+        return self
 
     class Config:
         env_file = ".env"
