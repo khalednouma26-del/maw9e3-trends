@@ -36,21 +36,27 @@ class AutoPublisher:
         # Step 1: Discover trends
         trends = await self.trend_discovery.discover_all()
         upserted = 0
+        duplicates_removed = 0
         for t in trends:
-            existing = await db.execute(select(Trend).where(Trend.keyword == t["keyword"]))
-            row = existing.scalar_one_or_none()
-            if row is None:
+            rows = (await db.execute(select(Trend).where(Trend.keyword == t["keyword"]))).scalars().all()
+            if not rows:
                 db.add(Trend(**t))
-            else:
-                # Refresh live metrics (Google Trends volumes/scores change hourly)
-                for field in ("score", "search_volume", "category", "url", "seo_keywords"):
-                    if t.get(field) is not None:
-                        setattr(row, field, t[field])
-                row.fetched_at = datetime.utcnow()
-                upserted += 1
+                continue
+            row = rows[0]
+            # Refresh live metrics (Google Trends volumes/scores change hourly)
+            for field in ("score", "search_volume", "category", "url", "seo_keywords"):
+                if t.get(field) is not None:
+                    setattr(row, field, t[field])
+            row.fetched_at = datetime.utcnow()
+            upserted += 1
+            # Clean up any duplicate rows (races between scheduler and manual runs)
+            for extra in rows[1:]:
+                await db.delete(extra)
+                duplicates_removed += 1
         await db.commit()
         result["trends_fetched"] = len(trends)
         result["trends_updated"] = upserted
+        result["trends_duplicates_removed"] = duplicates_removed
 
         # Step 2: Score and prioritize trends by niche relevance
         all_trends = (await db.execute(select(Trend).order_by(Trend.score.desc()).limit(200))).scalars().all()
@@ -72,8 +78,10 @@ class AutoPublisher:
         for trend in trend_rows[:40]:
             if not _is_article_worthy(trend.keyword):
                 continue
-            existing = await db.execute(select(Article).where(Article.trend_keyword == trend.keyword))
-            if existing.scalar_one_or_none():
+            article_rows = (await db.execute(select(Article).where(Article.trend_keyword == trend.keyword))).scalars().all()
+            if article_rows:
+                for extra in article_rows[1:]:
+                    await db.delete(extra)
                 continue
 
             article_data = await self.content_gen.generate_article(trend.keyword, trend.language or "en", trend.category)
