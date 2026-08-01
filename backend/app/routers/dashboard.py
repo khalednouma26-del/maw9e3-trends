@@ -1,9 +1,12 @@
 from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import select
 
 from app.database import get_db
 from app.services.analytics_service import AnalyticsService
 from app.models.user import User
+from app.models.article import Article
+from app.models.trend import Trend
 from app.utils.auth import get_current_user
 
 router = APIRouter(prefix="/api/dashboard", tags=["dashboard"])
@@ -35,6 +38,25 @@ async def recent_events(limit: int = 50, db: AsyncSession = Depends(get_db), cur
         }
         for e in events
     ]
+
+
+@router.post("/cleanup-legacy-articles")
+async def cleanup_legacy_articles(db: AsyncSession = Depends(get_db), current_user: User = Depends(get_current_user)):
+    if not current_user.is_admin:
+        from fastapi import HTTPException
+        raise HTTPException(status_code=403, detail="Admin only")
+    gt_keywords = set((await db.execute(select(Trend.keyword).where(Trend.source == "google_trends"))).scalars().all())
+    articles = (await db.execute(select(Article))).scalars().all()
+    removed = 0
+    kept = 0
+    for a in articles:
+        if a.trend_keyword not in gt_keywords:
+            await db.delete(a)
+            removed += 1
+        else:
+            kept += 1
+    await db.commit()
+    return {"message": f"Removed {removed} legacy articles, kept {kept} real-trend articles"}
 
 
 @router.post("/track")
