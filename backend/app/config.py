@@ -15,7 +15,7 @@ class Settings(BaseSettings):
     admin_email: str = "admin@maw9e3.com"
     focus_niches: str = ""  # Comma-separated: e.g. "health,finance,technology"
     trends_refresh_interval_hours: int = 1
-    content_gen_interval_hours: int = 2
+    content_gen_interval_hours: int = 1
     update_interval_hours: int = 24
 
     @model_validator(mode="after")
