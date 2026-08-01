@@ -30,6 +30,9 @@ def _is_article_worthy(keyword: str) -> bool:
     return True
 
 
+ARTICLES_PER_KEYWORD = 3
+
+
 class AutoPublisher:
     def __init__(self):
         self.content_gen = ContentGenerator()
@@ -86,38 +89,39 @@ class AutoPublisher:
             if not _is_article_worthy(trend.keyword):
                 continue
             article_rows = (await db.execute(select(Article).where(Article.trend_keyword == trend.keyword))).scalars().all()
-            if article_rows:
-                for extra in article_rows[1:]:
-                    await db.delete(extra)
-                continue
+            # Trim any excess articles for this keyword down to the cap
+            for extra in article_rows[ARTICLES_PER_KEYWORD:]:
+                await db.delete(extra)
+            num_existing = min(len(article_rows), ARTICLES_PER_KEYWORD)
 
-            article_data = await self.content_gen.generate_article(trend.keyword, trend.language or "en", trend.category)
-            if not article_data:
-                continue
+            for i in range(num_existing, ARTICLES_PER_KEYWORD):
+                article_data = await self.content_gen.generate_article(trend.keyword, trend.language or "en", trend.category, template_index=i)
+                if not article_data:
+                    continue
 
-            slug = self.content_gen._slugify(article_data.get("title", trend.keyword))
-            article = Article(
-                title=article_data.get("title", trend.keyword),
-                slug=slug,
-                content=article_data.get("content", ""),
-                summary=article_data.get("excerpt", "")[:1000],
-                meta_title=article_data.get("meta_title", "")[:500],
-                meta_description=article_data.get("meta_description", "")[:1000],
-                excerpt=article_data.get("excerpt", "")[:1000],
-                tags=article_data.get("tags", ""),
-                trend_keyword=trend.keyword,
-                faq_schema=article_data.get("faq_schema", ""),
-                word_count=article_data.get("word_count", 0),
-                status="published",
-                published=1,
-                image_url=article_data.get("image_url"),
-                image_alt=article_data.get("image_alt"),
-                category_name=trend.category,
-                language=trend.language or "en",
-                published_at=datetime.utcnow(),
-            )
-            db.add(article)
-            result["articles_generated"] += 1
+                slug = self.content_gen._slugify(article_data.get("title", trend.keyword))
+                article = Article(
+                    title=article_data.get("title", trend.keyword),
+                    slug=slug,
+                    content=article_data.get("content", ""),
+                    summary=article_data.get("excerpt", "")[:1000],
+                    meta_title=article_data.get("meta_title", "")[:500],
+                    meta_description=article_data.get("meta_description", "")[:1000],
+                    excerpt=article_data.get("excerpt", "")[:1000],
+                    tags=article_data.get("tags", ""),
+                    trend_keyword=trend.keyword,
+                    faq_schema=article_data.get("faq_schema", ""),
+                    word_count=article_data.get("word_count", 0),
+                    status="published",
+                    published=1,
+                    image_url=article_data.get("image_url"),
+                    image_alt=article_data.get("image_alt"),
+                    category_name=trend.category,
+                    language=trend.language or "en",
+                    published_at=datetime.utcnow(),
+                )
+                db.add(article)
+                result["articles_generated"] += 1
 
         await db.commit()
         result["articles_published"] = result["articles_generated"]

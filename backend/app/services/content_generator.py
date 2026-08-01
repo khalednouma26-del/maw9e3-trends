@@ -430,13 +430,13 @@ class ContentGenerator:
         seed = hashlib.md5(keyword.encode()).hexdigest()[:8]
         return (f"https://picsum.photos/seed/{seed}/800/450", f"Image illustrating {keyword}")
 
-    async def generate_article(self, keyword: str, language: str = "en", category: Optional[str] = None) -> Optional[dict]:
+    async def generate_article(self, keyword: str, language: str = "en", category: Optional[str] = None, template_index: Optional[int] = None) -> Optional[dict]:
         if settings.openai_api_key:
             return await self._generate_openai(keyword, category, language)
         elif settings.gemini_api_key:
             return await self._generate_gemini(keyword, category, language)
         else:
-            return self._generate_fallback(keyword, category)
+            return self._generate_fallback(keyword, category, template_index)
 
     async def _generate_openai(self, keyword: str, category: Optional[str], language: str) -> Optional[dict]:
         prompt = f"""Write a unique, high-quality SEO article about: "{keyword}"
@@ -485,7 +485,7 @@ Return JSON: title, meta_title, meta_description, excerpt, content (HTML), tags,
             logger.warning("Gemini error: %s", e)
             return self._generate_fallback(keyword, category)
 
-    def _generate_fallback(self, keyword: str, category: Optional[str] = None) -> dict:
+    def _generate_fallback(self, keyword: str, category: Optional[str] = None, template_index: Optional[int] = None) -> dict:
         cat = (category or "general").lower()
         if cat not in CATEGORY_DATA:
             cat = "general"
@@ -497,7 +497,10 @@ Return JSON: title, meta_title, meta_description, excerpt, content (HTML), tags,
         metrics = cd["metrics"]
         verbs = cd["verbs"]
 
-        template = random.choice(TEMPLATES)
+        if template_index is not None:
+            template = TEMPLATES[template_index % len(TEMPLATES)]
+        else:
+            template = random.choice(TEMPLATES)
         year1 = years[0] if years else "2026"
         audience = _pick(DEFAULT_AUDIENCE)[0]
 
