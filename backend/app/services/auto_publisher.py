@@ -14,7 +14,13 @@ logger = logging.getLogger("maw9e3.publisher")
 
 def _is_article_worthy(keyword: str) -> bool:
     kw = keyword.strip()
-    if len(kw) < 3 or len(kw) > 80:
+    if len(kw) < 3 or len(kw) > 60:
+        return False
+    if "???" in kw:
+        return False
+    if len(kw.split()) > 8:
+        return False
+    if " - " in kw:
         return False
     if kw.lower() in {
         "try searching to get started", "home", "playback", "keyboard shortcuts", "history",
@@ -61,11 +67,12 @@ class AutoPublisher:
         # Step 2: Score and prioritize trends by niche relevance
         all_trends = (await db.execute(select(Trend).order_by(Trend.score.desc()).limit(200))).scalars().all()
 
-        # Boost focus niche trends
+        # Boost focus niche trends + prefer real Google Trends search queries
         scored = []
         for t in all_trends:
             niche_score = self.strategy.score_trend_for_niche(t.keyword, t.category)
-            scored.append((t.score + niche_score, t))
+            source_bonus = 10 if t.source == "google_trends" else 0
+            scored.append((t.score + niche_score + source_bonus, t))
         scored.sort(key=lambda x: -x[0])
 
         trend_rows = []
