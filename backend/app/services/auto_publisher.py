@@ -12,6 +12,18 @@ from app.services.content_strategy import ContentStrategy
 logger = logging.getLogger("maw9e3.publisher")
 
 
+def _is_article_worthy(keyword: str) -> bool:
+    kw = keyword.strip()
+    if len(kw) < 3 or len(kw) > 80:
+        return False
+    if kw.lower() in {
+        "try searching to get started", "home", "playback", "keyboard shortcuts", "history",
+        "settings", "sign in", "about", "contact us", "terms", "privacy", "search",
+    }:
+        return False
+    return True
+
+
 class AutoPublisher:
     def __init__(self):
         self.content_gen = ContentGenerator()
@@ -58,6 +70,8 @@ class AutoPublisher:
                 trend_rows.append(t)
                 seen_cats.add(cat)
         for trend in trend_rows[:40]:
+            if not _is_article_worthy(trend.keyword):
+                continue
             existing = await db.execute(select(Article).where(Article.trend_keyword == trend.keyword))
             if existing.scalar_one_or_none():
                 continue

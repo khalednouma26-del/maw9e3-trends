@@ -55,6 +55,18 @@ CATEGORY_FEEDS = {
 }
 
 
+JUNK_KEYWORDS = {
+    "try searching to get started", "home", "playback", "keyboard shortcuts", "history",
+    "search", "watch", "settings", "sign in", "get youtube", "report history", "help",
+    "about", "press", "copyright", "contact us", "creators", "advertise", "developers",
+    "terms", "privacy", "policy", "safety", "how youtube works", "test new features",
+    "nfl sunday ticket", "trending now", "explore", "live", "music", "gaming",
+    "sports", "films", "podcasts", "library", "library history", "shorts",
+    "subscriptions", "your channel", "yt music", "youtube premium", "google llc",
+    "welcome back", "you're offline", "check your connection",
+}
+
+
 class TrendDiscoveryService:
     def __init__(self):
         self.client = httpx.AsyncClient(timeout=15.0, follow_redirects=True)
@@ -293,8 +305,11 @@ class TrendDiscoveryService:
         seen = set()
         deduped = []
         for t in trends:
-            key = t["keyword"].lower().strip()
-            if key and key not in seen:
-                seen.add(key)
-                deduped.append(t)
+            kw = t["keyword"].strip().lower()
+            if not kw or kw in seen or kw in JUNK_KEYWORDS:
+                continue
+            if len(kw) < 3:
+                continue
+            seen.add(kw)
+            deduped.append(t)
         return deduped
