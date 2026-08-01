@@ -59,6 +59,30 @@ async def cleanup_legacy_articles(db: AsyncSession = Depends(get_db), current_us
     return {"message": f"Removed {removed} legacy articles, kept {kept} real-trend articles"}
 
 
+@router.post("/fix-images")
+async def fix_article_images(db: AsyncSession = Depends(get_db), current_user: User = Depends(get_current_user)):
+    if not current_user.is_admin:
+        from fastapi import HTTPException
+        raise HTTPException(status_code=403, detail="Admin only")
+    import hashlib
+    articles = (await db.execute(select(Article))).scalars().all()
+    updated = 0
+    seen_seeds = {}
+    for a in articles:
+        seed = hashlib.md5((a.title or a.trend_keyword or str(a.id)).encode()).hexdigest()[:8]
+        base = f"https://picsum.photos/seed/{seed}/800/450"
+        if base in seen_seeds:
+            seed = hashlib.md5(f"{(a.title or a.trend_keyword or '')}-{a.id}".encode()).hexdigest()[:8]
+            base = f"https://picsum.photos/seed/{seed}/800/450"
+        seen_seeds[base] = a.id
+        if a.image_url != base:
+            a.image_url = base
+            a.image_alt = f"Image illustrating {a.trend_keyword or a.title}"
+            updated += 1
+    await db.commit()
+    return {"message": f"Updated {updated} article images"}
+
+
 @router.post("/track")
 async def track_event(
     event_type: str,

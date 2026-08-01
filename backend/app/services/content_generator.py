@@ -426,8 +426,8 @@ def _fill_template_field(text: str, kw: dict) -> str:
 
 
 class ContentGenerator:
-    def _get_image_url(self, keyword: str) -> tuple[str, str]:
-        seed = hashlib.md5(keyword.encode()).hexdigest()[:8]
+    def _get_image_url(self, keyword: str, extra: str = "") -> tuple[str, str]:
+        seed = hashlib.md5(f"{keyword}{extra}".encode()).hexdigest()[:8]
         return (f"https://picsum.photos/seed/{seed}/800/450", f"Image illustrating {keyword}")
 
     async def generate_article(self, keyword: str, language: str = "en", category: Optional[str] = None, template_index: Optional[int] = None) -> Optional[dict]:
@@ -587,7 +587,7 @@ Return JSON: title, meta_title, meta_description, excerpt, content (HTML), tags,
             faq_entities.append({"@type": "Question", "name": _fill_template_field(q, kw), "acceptedAnswer": {"@type": "Answer", "text": _fill_template_field(a, kw)}})
         faq_schema = json.dumps({"@context": "https://schema.org", "@type": "FAQPage", "mainEntity": faq_entities})
 
-        img, alt = self._get_image_url(keyword)
+        img, alt = self._get_image_url(keyword, str(template_index or ""))
         return {
             "title": title, "meta_title": meta_title, "meta_description": meta_desc[:160],
             "excerpt": excerpt, "content": content,
