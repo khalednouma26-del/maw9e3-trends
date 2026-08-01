@@ -1,5 +1,7 @@
 import asyncio
 import logging
+import math
+import re
 import feedparser
 import httpx
 from datetime import datetime, timezone
@@ -60,19 +62,44 @@ class TrendDiscoveryService:
     async def close(self):
         await self.client.aclose()
 
+    def _parse_traffic(self, raw) -> Optional[int]:
+        if not raw:
+            return None
+        m = re.match(r"([\d.]+)\s*(k|m|b)?\+?", str(raw).strip().lower())
+        if not m:
+            return None
+        n = float(m.group(1))
+        mult = {"k": 1e3, "m": 1e6, "b": 1e9}.get(m.group(2) or "", 1)
+        return int(n * mult)
+
+    def _traffic_score(self, vol) -> float:
+        if not vol:
+            return 60.0
+        return round(min(100.0, 40 + 12 * math.log10(vol)), 1)
+
     async def from_google_trends(self) -> list[dict]:
         try:
-            from pytrends.request import TrendReq
-            pytrends = TrendReq(hl="en-US", tz=0)
-            df = pytrends.trending_searches(pn="united_states")
+            url = "https://trends.google.com/trending/rss?geo=US"
+            resp = await self.client.get(url)
+            feed = feedparser.parse(resp.text)
             trends = []
-            for i, row in df.iterrows():
+            seen = set()
+            for entry in feed.entries[:40]:
+                keyword = entry.get("title", "").strip()
+                if not keyword or keyword in seen:
+                    continue
+                seen.add(keyword)
+                traffic = self._parse_traffic(entry.get("ht_approx_traffic"))
+                news_title = entry.get("ht_news_item_title", "") or ""
+                news_url = entry.get("ht_news_item_url", "") or ""
                 trends.append({
-                    "keyword": str(row[0]),
+                    "keyword": keyword,
                     "source": "google_trends",
-                    "score": round(100 - i * 5, 1),
-                    "search_volume": None,
-                    "category": self._guess_category(str(row[0])),
+                    "score": self._traffic_score(traffic),
+                    "search_volume": traffic,
+                    "category": self._guess_category(keyword),
+                    "url": news_url,
+                    "seo_keywords": news_title or None,
                 })
             return trends
         except Exception as e:
@@ -212,7 +239,10 @@ class TrendDiscoveryService:
         kw = keyword.lower()
         sports_keywords = ["sport", "game", "match", "championship", "nfl", "nba", "mlb", "nhl",
                           "soccer", "football", "basketball", "tennis", "f1", "olympic", "ufc",
-                          "world cup", "league", "player", "coach", "stadium", "goal", "score"]
+                          "world cup", "league", "player", "coach", "stadium", "goal", "score",
+                          "united", "madrid", "barcelona", "liverpool", "chelsea", "arsenal",
+                          "golf", "cricket", "debut", "tournament", "title fight", "gp ", "circuit",
+                          "quarterfinal", "semifinal", "playoff", "pitch", "mvp", "race"]
         finance_keywords = ["stock", "market", "bitcoin", "crypto", "bank", "invest", "economy",
                            "inflation", "recession", "gdp", "trade", "tariff", "dollar", "fed",
                            "interest rate", "bond", "etf", "nasdaq", "s&p", "dow jones"]
@@ -221,7 +251,9 @@ class TrendDiscoveryService:
                             "campaign", "political", "trump", "biden", "ukraine", "russia", "china", "war",
                             "sanction", "diplomat", "foreign", "nato", "united nations"]
         health_keywords = ["health", "covid", "disease", "vaccine", "hospital", "doctor", "drug",
-                           "medical", "patient", "cancer", "virus", "mental health", "fda"]
+                           "medical", "patient", "cancer", "virus", "mental health", "fda",
+                           "salmonella", "recall", "outbreak", "hospitalized", "infection",
+                           "ebola", "flu", "obesity", "diet", "fitness", "workout", "wellness"]
         entertainment_keywords = ["movie", "film", "music", "celebrity", "netflix", "show", "actor",
                                  "actress", "song", "album", "concert", "award", "oscar", "grammy",
                                  "hollywood", "disney", "marvel", "trailer", "series"]
