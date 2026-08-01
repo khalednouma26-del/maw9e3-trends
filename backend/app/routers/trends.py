@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 
@@ -11,8 +11,18 @@ discovery = TrendDiscoveryService()
 
 
 @router.get("")
-async def list_trends(db: AsyncSession = Depends(get_db)):
-    result = await db.execute(select(Trend).order_by(Trend.score.desc()).limit(100))
+async def list_trends(
+    db: AsyncSession = Depends(get_db),
+    q: str = Query(default="", description="Filter by keyword substring"),
+    source: str = Query(default="", description="Filter by source"),
+    limit: int = Query(default=100, ge=1, le=500),
+):
+    stmt = select(Trend).order_by(Trend.score.desc()).limit(limit)
+    if q:
+        stmt = select(Trend).where(Trend.keyword.ilike(f"%{q}%")).order_by(Trend.score.desc())
+    if source:
+        stmt = select(Trend).where(Trend.source == source).order_by(Trend.score.desc())
+    result = await db.execute(stmt)
     trends = result.scalars().all()
     return [
         {
