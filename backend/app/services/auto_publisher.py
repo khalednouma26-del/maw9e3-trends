@@ -23,12 +23,22 @@ class AutoPublisher:
 
         # Step 1: Discover trends
         trends = await self.trend_discovery.discover_all()
+        upserted = 0
         for t in trends:
             existing = await db.execute(select(Trend).where(Trend.keyword == t["keyword"]))
-            if not existing.scalar_one_or_none():
+            row = existing.scalar_one_or_none()
+            if row is None:
                 db.add(Trend(**t))
+            else:
+                # Refresh live metrics (Google Trends volumes/scores change hourly)
+                for field in ("score", "search_volume", "category", "url", "seo_keywords"):
+                    if t.get(field) is not None:
+                        setattr(row, field, t[field])
+                row.fetched_at = datetime.utcnow()
+                upserted += 1
         await db.commit()
         result["trends_fetched"] = len(trends)
+        result["trends_updated"] = upserted
 
         # Step 2: Score and prioritize trends by niche relevance
         all_trends = (await db.execute(select(Trend).order_by(Trend.score.desc()).limit(200))).scalars().all()

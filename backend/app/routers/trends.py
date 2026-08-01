@@ -42,10 +42,19 @@ async def list_trends(
 async def refresh_trends(db: AsyncSession = Depends(get_db)):
     trends = await discovery.discover_all()
     count = 0
+    updated = 0
+    from datetime import datetime
     for t in trends:
         existing = await db.execute(select(Trend).where(Trend.keyword == t["keyword"]))
-        if not existing.scalar_one_or_none():
+        row = existing.scalar_one_or_none()
+        if row is None:
             db.add(Trend(**t))
             count += 1
+        else:
+            for field in ("score", "search_volume", "category", "url", "seo_keywords"):
+                if t.get(field) is not None:
+                    setattr(row, field, t[field])
+            row.fetched_at = datetime.utcnow()
+            updated += 1
     await db.commit()
-    return {"message": f"Fetched {len(trends)} trends, {count} new", "total": len(trends), "new": count}
+    return {"message": f"Fetched {len(trends)} trends, {count} new, {updated} updated", "total": len(trends), "new": count, "updated": updated}
