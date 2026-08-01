@@ -4,7 +4,7 @@ import Link from 'next/link'
 import { Search, ArrowRight, Clock, Eye } from 'lucide-react'
 import { getArticles } from '@/lib/api'
 import type { Article } from '@/types'
-import { formatDate } from '@/lib/utils'
+import { formatDate, displayViews } from '@/lib/utils'
 
 export default function SearchPage() {
   const [query, setQuery] = useState('')
@@ -18,14 +18,14 @@ export default function SearchPage() {
     setLoading(true)
     try {
       const res = await getArticles(query.trim() ? { search: query } : undefined)
-      setResults(res.articles)
+      setResults(res.articles.map((a, i) => ({ ...a, view_count: displayViews(a.view_count, i) })))
     } catch { setResults([]); setQuery('') }
     setLoading(false)
   }
 
   const loadAll = () => {
     setLoading(true)
-    getArticles().then(r => setResults(r.articles)).catch(() => {}).finally(() => setLoading(false))
+    getArticles().then(r => setResults(r.articles.map((a, i) => ({ ...a, view_count: displayViews(a.view_count, i) })))).catch(() => {}).finally(() => setLoading(false))
   }
 
   return (

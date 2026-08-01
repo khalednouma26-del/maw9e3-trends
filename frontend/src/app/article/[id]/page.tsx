@@ -4,7 +4,7 @@ import { useParams } from 'next/navigation'
 import Link from 'next/link'
 import { ArrowLeft, TrendingUp, Clock, Eye, Share2, Facebook, Twitter, Linkedin } from 'lucide-react'
 import { getArticle, trackPageView } from '@/lib/api'
-import { formatDate } from '@/lib/utils'
+import { formatDate, displayViews } from '@/lib/utils'
 import type { ArticleDetail } from '@/types'
 
 export default function ArticlePage() {
@@ -15,6 +15,7 @@ export default function ArticlePage() {
 
   useEffect(() => {
     getArticle(Number(id)).then((a) => {
+      a.view_count = displayViews(a.view_count)
       setArticle(a)
       trackPageView(Number(id))
     }).catch(() => setError(true)).finally(() => setLoading(false))
@@ -164,7 +165,7 @@ export default function ArticlePage() {
                       <h3 className="text-sm font-semibold text-white mb-1 line-clamp-2 group-hover:text-primary">{r.title}</h3>
                       <div className="flex items-center gap-2 text-xs text-dark-muted">
                         {r.published_at && <span><Clock size={11} /> {formatDate(r.published_at)}</span>}
-                        <span><Eye size={11} /> {r.view_count || 0}</span>
+                        <span><Eye size={11} /> {displayViews(r.view_count, r.id)}</span>
                       </div>
                     </div>
                   </div>

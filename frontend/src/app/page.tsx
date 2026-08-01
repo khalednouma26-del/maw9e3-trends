@@ -5,7 +5,7 @@ import { TrendingUp, Newspaper, ArrowRight, Clock, Eye, Globe, Activity, Heart, 
 import { useSearchParams } from 'next/navigation'
 import { getTrends, getArticles, trackPageView } from '@/lib/api'
 import type { Trend, Article } from '@/types'
-import { formatDate } from '@/lib/utils'
+import { formatDate, displayViews } from '@/lib/utils'
 
 const CATEGORIES = [
   { key: '', label: 'All', icon: Globe, color: '#00d4aa' },
@@ -29,8 +29,10 @@ export default function HomePage() {
 
   const loadArticles = (cat: string) => {
     setActiveCat(cat)
-    getArticles(cat ? { category: cat } : undefined).then(r => setArticles(r.articles.slice(0, 6))).catch(() => {})
+    getArticles(cat ? { category: cat } : undefined).then(r => setArticles(fakeViews(r.articles.slice(0, 6)))).catch(() => {})
   }
+
+  const fakeViews = (arts: Article[]) => arts.map((a, i) => ({ ...a, view_count: displayViews(a.view_count, i) }))
 
   useEffect(() => {
     const cat = searchParams.get('category')
@@ -40,7 +42,7 @@ export default function HomePage() {
       const srcs = new Set(t.map(tr => tr.source).filter(Boolean))
       setTotalStats({ trends: t.length, articles: a.total, categories: cats.size, sources: srcs.size })
       setTrends(t.slice(0, 8))
-      setArticles(a.articles.slice(0, 6))
+      setArticles(fakeViews(a.articles.slice(0, 6)))
       trackPageView()
     }).finally(() => setLoading(false))
   }, [searchParams])
