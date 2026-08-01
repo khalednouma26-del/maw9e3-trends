@@ -100,6 +100,8 @@ class AutoPublisher:
                     continue
 
                 slug = self.content_gen._slugify(article_data.get("title", trend.keyword))
+                if i > 0:
+                    slug = f"{slug[:195]}-{i + 1}"
                 article = Article(
                     title=article_data.get("title", trend.keyword),
                     slug=slug,
