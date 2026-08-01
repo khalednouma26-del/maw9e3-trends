@@ -74,8 +74,8 @@ class TrendDiscoveryService:
 
     def _traffic_score(self, vol) -> float:
         if not vol:
-            return 60.0
-        return round(min(100.0, 40 + 12 * math.log10(vol)), 1)
+            return 70.0
+        return round(min(100.0, 60 + 10 * math.log10(vol)), 1)
 
     async def from_google_trends(self) -> list[dict]:
         try:
@@ -97,7 +97,7 @@ class TrendDiscoveryService:
                     "source": "google_trends",
                     "score": self._traffic_score(traffic),
                     "search_volume": traffic,
-                    "category": self._guess_category(keyword),
+                    "category": self._guess_category(f"{keyword} {news_title}"),
                     "url": news_url,
                     "seo_keywords": news_title or None,
                 })
